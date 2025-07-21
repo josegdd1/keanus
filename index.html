@@ -59,6 +59,19 @@
     <button id="retryButton">Reintentar</button>
 </div>
 
+<div id="eventStartScreen" class="screen" style="display:none;">
+    <h2>¡Luis se va a venir!</h2>
+    <p>Tragatelo todo como un buen fan de One Piece.</p>
+    <button id="startEventButton">Mano como así</button>
+</div>
+
+<div id="eventEndScreen" class="screen" style="display:none;">
+    <h2>Dale click a continuar y espera la cuenta atrás</h2>
+    <p>¡Sigue esquivando los penes!</p>
+    <h1 id="countdown">3</h1>
+    <button id="continueButton">Continuar</button>
+</div>
+    
 <div id="score">Puntuación: 0</div>
 <canvas id="gameCanvas" width="400" height="600"></canvas>
 
@@ -70,6 +83,12 @@ const startScreen = document.getElementById('startScreen');
 const startButton = document.getElementById('startButton');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const retryButton = document.getElementById('retryButton');
+    const eventStartScreen = document.getElementById('eventStartScreen');
+const startEventButton = document.getElementById('startEventButton');
+
+const eventEndScreen = document.getElementById('eventEndScreen');
+const continueButton = document.getElementById('continueButton');
+const countdown = document.getElementById('countdown');
 
 const playerImg = new Image();
 playerImg.src = 'https://i.postimg.cc/PxF4xgTn/keanus.png';
@@ -90,6 +109,7 @@ let player, obstacles, score, gameOver, speed;
 let highScore = localStorage.getItem('highScore') || 0;
 let inEvent = false;
 let eventPlayer, fallingItems = [], caughtItems = 0;
+let isTouching = false;
 
 function initGame() {
     player = { x: 50, y: canvas.height - 100, width: 50, height: 50, vy: 0, gravity: 0.5, jumpPower: -10, isJumping: false };
@@ -159,10 +179,10 @@ function update() {
             fallingItems.push({ x: Math.random() * (canvas.width - 30), y: 80, width: 30, height: 30 });
         }
 
-        if (caughtItems >= 20) {
-            inEvent = false;
-            caughtItems = 0;
-            spawnObstacle();
+        if (caughtItems >= 30) {
+    inEvent = false;
+    caughtItems = 0;
+    showEventEndScreen();
         }
     }
 }
@@ -196,10 +216,7 @@ function jump() {
 }
 
 function startEvent() {
-    inEvent = true;
-    eventPlayer = { x: canvas.width / 2 - 25, y: canvas.height - 80, width: 50, height: 50 };
-    fallingItems = [];
-    caughtItems = 0;
+    eventStartScreen.style.display = 'flex';
 }
 
 function endGame() {
@@ -213,6 +230,11 @@ function endGame() {
     gameOverScreen.style.display = 'flex';
 }
 
+function showEventEndScreen() {
+    eventEndScreen.style.display = 'flex';
+    countdown.innerText = '3';
+    }
+    
 window.addEventListener('keydown', e => {
     if (e.code === 'Space') jump();
     if (inEvent) {
@@ -223,12 +245,55 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('touchstart', jump);
 
+canvas.addEventListener('touchstart', e => {
+    if (inEvent) isTouching = true;
+});
+
+canvas.addEventListener('touchmove', e => {
+    if (inEvent && isTouching) {
+        const touchX = e.touches[0].clientX;
+        const canvasLeft = canvas.getBoundingClientRect().left;
+        eventPlayer.x = touchX - canvasLeft - eventPlayer.width / 2;
+
+        if (eventPlayer.x < 0) eventPlayer.x = 0;
+        if (eventPlayer.x + eventPlayer.width > canvas.width) {
+            eventPlayer.x = canvas.width - eventPlayer.width;
+        }
+    }
+});
+
+canvas.addEventListener('touchend', () => {
+    isTouching = false;
+});
+    
 startButton.addEventListener('click', () => {
     startScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
     initGame();
 });
 
+startEventButton.addEventListener('click', () => {
+    eventStartScreen.style.display = 'none';
+    inEvent = true;
+    eventPlayer = { x: canvas.width / 2 - 25, y: canvas.height - 80, width: 50, height: 50 };
+    fallingItems = [];
+    caughtItems = 0;
+});
+
+    continueButton.addEventListener('click', () => {
+    let count = 3;
+    countdown.innerText = count;
+    const interval = setInterval(() => {
+        count--;
+        countdown.innerText = count;
+        if (count === 0) {
+            clearInterval(interval);
+            eventEndScreen.style.display = 'none';
+            spawnObstacle();
+        }
+    }, 1000);
+});
+    
 retryButton.addEventListener('click', () => {
     gameOverScreen.style.display = 'none';
     initGame();
