@@ -148,7 +148,7 @@ function update() {
         if (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
             obstacles = [];
             score++;
-            speed += 0.8;
+            speed += 0.5;
             if (speed > 9) speed = 9; // por ejemplo, máximo 8
             document.getElementById('score').innerText = 'Puntuación: ' + score;
             if (score === 50) startEvent();
