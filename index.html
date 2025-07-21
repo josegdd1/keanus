@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keanus</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            font-family: sans-serif;
+            color: white;
+            text-align: center;
+            overflow: hidden;
+        }
+        canvas {
+            background: black;
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #fff;
+        }
+        #score {
+            font-size: 24px;
+            margin: 10px;
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        button {
+            font-size: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="startScreen" class="screen">
+    <h1>¡Evita que Keanus caiga en los penes!</h1>
+    <p>Pasó vale como que los penes mano no entiendo mano</p>
+    <p>Puntuación Máxima: <span id="highScore">0</span></p>
+    <button id="startButton">Jugar</button>
+</div>
+
+<div id="gameOverScreen" class="screen" style="display:none;">
+    <h2>Pasó mano estoy preñado mano? Aiko mano?</h2>
+    <p>Tu puntuación: <span id="finalScore">0</span></p>
+    <button id="retryButton">Reintentar</button>
+</div>
+
+<div id="score">Puntuación: 0</div>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const startScreen = document.getElementById('startScreen');
+const startButton = document.getElementById('startButton');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const retryButton = document.getElementById('retryButton');
+
+const playerImg = new Image();
+playerImg.src = 'https://i.postimg.cc/PxF4xgTn/keanus.png';
+
+const obstacleImg = new Image();
+obstacleImg.src = 'https://i.postimg.cc/QC9qWfd9/pene.png';
+
+const eventPlayerImg = new Image();
+eventPlayerImg.src = 'https://i.postimg.cc/HWhyqWv2/Picsart-25-07-21-13-08-09-644.png';
+
+const fallingItemImg = new Image();
+fallingItemImg.src = 'https://i.postimg.cc/QMzmxLXG/luissemen.png';
+
+const enemyImg = new Image();
+enemyImg.src = 'https://i.postimg.cc/7h8N0gGK/luis.png';
+
+let player, obstacles, score, gameOver, speed;
+let highScore = localStorage.getItem('highScore') || 0;
+let inEvent = false;
+let eventPlayer, fallingItems = [], caughtItems = 0;
+
+function initGame() {
+    player = { x: 50, y: canvas.height - 100, width: 50, height: 50, vy: 0, gravity: 0.5, jumpPower: -10, isJumping: false };
+    obstacles = [];
+    score = 0;
+    speed = 6;
+    gameOver = false;
+    inEvent = false;
+    document.getElementById('score').innerText = 'Puntuación: 0';
+    spawnObstacle();
+    gameLoop();
+}
+
+function spawnObstacle() {
+    let numberOfObstacles = Math.floor(Math.random() * 3) + 1;
+    let startX = canvas.width;
+    for (let i = 0; i < numberOfObstacles; i++) {
+        obstacles.push({ x: startX + i * 40, y: canvas.height - 90, width: 30, height: 40, speed: speed });
+    }
+}
+
+function update() {
+    if (gameOver) return;
+
+    if (!inEvent) {
+        player.vy += player.gravity;
+        player.y += player.vy;
+
+        if (player.y >= canvas.height - 100) {
+            player.y = canvas.height - 100;
+            player.isJumping = false;
+        }
+
+        obstacles.forEach(obs => obs.x -= speed);
+
+        if (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
+            obstacles = [];
+            score++;
+            speed += 0.1;
+            document.getElementById('score').innerText = 'Puntuación: ' + score;
+            if (score === 50) startEvent();
+            else spawnObstacle();
+        }
+
+        obstacles.forEach(obs => {
+            if (player.x < obs.x + obs.width && player.x + player.width > obs.x && player.y < obs.y + obs.height && player.y + player.height > obs.y) {
+                endGame();
+            }
+        });
+    } else {
+        fallingItems.forEach(item => item.y += 5);
+        fallingItems = fallingItems.filter(item => item.y < canvas.height);
+
+        fallingItems.forEach(item => {
+            if (item.x < eventPlayer.x + eventPlayer.width &&
+                item.x + item.width > eventPlayer.x &&
+                item.y < eventPlayer.y + eventPlayer.height &&
+                item.y + item.height > eventPlayer.y) {
+                    caughtItems++;
+                    item.caught = true;
+            }
+        });
+
+        fallingItems = fallingItems.filter(item => !item.caught);
+
+        if (Math.random() < 0.05) {
+            fallingItems.push({ x: Math.random() * (canvas.width - 30), y: 80, width: 30, height: 30 });
+        }
+
+        if (caughtItems >= 20) {
+            inEvent = false;
+            caughtItems = 0;
+            spawnObstacle();
+        }
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!inEvent) {
+        ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+        obstacles.forEach(obs => ctx.drawImage(obstacleImg, obs.x, obs.y, obs.width, obs.height));
+    } else {
+        ctx.drawImage(enemyImg, canvas.width/2 - 40, 20, 80, 80);
+        ctx.drawImage(eventPlayerImg, eventPlayer.x, eventPlayer.y, eventPlayer.width, eventPlayer.height);
+        fallingItems.forEach(item => ctx.drawImage(fallingItemImg, item.x, item.y, item.width, item.height));
+        ctx.font = '20px sans-serif';
+        ctx.fillText('Objetos atrapados: ' + caughtItems, 10, 30);
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    if (!gameOver) requestAnimationFrame(gameLoop);
+}
+
+function jump() {
+    if (!inEvent && !player.isJumping) {
+        player.vy = player.jumpPower;
+        player.isJumping = true;
+    }
+}
+
+function startEvent() {
+    inEvent = true;
+    eventPlayer = { x: canvas.width / 2 - 25, y: canvas.height - 80, width: 50, height: 50 };
+    fallingItems = [];
+    caughtItems = 0;
+}
+
+function endGame() {
+    gameOver = true;
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore);
+    }
+    document.getElementById('finalScore').innerText = score;
+    document.getElementById('highScore').innerText = highScore;
+    gameOverScreen.style.display = 'flex';
+}
+
+window.addEventListener('keydown', e => {
+    if (e.code === 'Space') jump();
+    if (inEvent) {
+        if (e.code === 'ArrowLeft') eventPlayer.x -= 20;
+        if (e.code === 'ArrowRight') eventPlayer.x += 20;
+    }
+});
+
+window.addEventListener('touchstart', jump);
+
+startButton.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    gameOverScreen.style.display = 'none';
+    initGame();
+});
+
+retryButton.addEventListener('click', () => {
+    gameOverScreen.style.display = 'none';
+    initGame();
+});
+</script>
+
+</body>
+</html>
